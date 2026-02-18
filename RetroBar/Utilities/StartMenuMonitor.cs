@@ -259,7 +259,7 @@ namespace RetroBar.Utilities
             {
                 // Always use the Windows key when IImmersiveLauncher or IImmersiveMonitor is unavailable
                 // Also use the Windows key when Open Shell Menu or StartIsBack is running, because we cannot otherwise invoke it
-                ShellHelper.ShowStartMenu();
+                // ShellHelper.ShowStartMenu();
                 return;
             }
 
@@ -294,7 +294,7 @@ namespace RetroBar.Utilities
                 ShellLogger.Warning($"StartMenuMonitor: Failed to show Start menu via IImmersiveLauncher: {e}");
             }
 
-            ShellHelper.ShowStartMenu();
+            // ShellHelper.ShowStartMenu();
         }
 
         public void Dispose()

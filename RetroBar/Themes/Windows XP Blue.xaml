@@ -799,6 +799,7 @@
            BasedOn="{StaticResource TaskButton}">
         <Setter Property="Margin"
                 Value="{DynamicResource TaskButtonMargin}" />
+        <Setter Property="Width" Value="100"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -836,8 +837,7 @@
                                                         Background="{DynamicResource TaskButtonBackgroundHighlight}"
                                                         CornerRadius="2"
                                                         x:Name="ButtonInnerRightBorder">
-                                                    <ContentPresenter Margin="8,3"
-                                                                  x:Name="Content" />
+                                                <ContentPresenter Margin="4,3" x:Name="Content" />
                                                 </Border>
                                             </Border>
                                         </Border>
@@ -970,6 +970,7 @@
            BasedOn="{StaticResource TaskButton}">
         <Setter Property="Foreground"
                 Value="{DynamicResource ButtonActiveForeground}" />
+                <Setter Property="Width" Value="100"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -1058,6 +1059,7 @@
     <Style TargetType="Button"
            x:Key="TaskButtonFlashing"
            BasedOn="{StaticResource TaskButton}">
+           <Setter Property="Width" Value="100"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">

@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -20,7 +23,11 @@ namespace RetroBar.Controls
         private bool _isLoaded;
         private CollectionViewSource allNotifyIconsSource;
         private CollectionViewSource pinnedNotifyIconsSource;
-        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> promotedIcons = new ObservableCollection<ManagedShell.WindowsTray.NotifyIcon>();
+        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> promotedIcons = [];
+
+        // Sorted collections
+        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedAllIcons = [];
+        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedPinnedIcons = [];
 
         public static DependencyProperty NotificationAreaProperty = DependencyProperty.Register(nameof(NotificationArea), typeof(NotificationArea), typeof(NotifyIconList), new PropertyMetadata(NotificationAreaChangedCallback));
 
@@ -35,13 +42,164 @@ namespace RetroBar.Controls
             InitializeComponent();
         }
 
+        #region Custom Sorting
+
+        /// <summary>
+        /// Gets the sort priority for a NotifyIcon based on its Title.
+        /// Lower numbers appear first.
+        /// </summary>
+        private int GetIconSortPriority(ManagedShell.WindowsTray.NotifyIcon icon)
+        {
+            if (icon == null || string.IsNullOrEmpty(icon.Title))
+                return 1000;
+
+            string title = icon.Title;
+
+            // Priority 1: Icons containing "GB" (like "35.11 GB") or "Twitch.ahk"
+            if (title.Contains("GB") || title.Contains("Twitch.ahk"))
+            {
+                return 1;
+            }
+
+            // Priority 2: VSTHost
+            if (title.Contains("VSTHost"))
+            {
+                return 2;
+            }
+
+            // Priority 3: Safely Remove Hardware
+            if (title.Contains("Safely Remove Hardware"))
+            {
+                return 9998;
+            }
+
+            // Always last: Speakers
+            if (title.Contains("Speakers:"))
+            {
+                return 9999;
+            }
+
+            return 100;
+        }
+
+        /// <summary>
+        /// Extracts NotifyIcons from any enumerable source
+        /// </summary>
+        private List<ManagedShell.WindowsTray.NotifyIcon> ExtractIcons(IEnumerable source)
+        {
+            var result = new List<ManagedShell.WindowsTray.NotifyIcon>();
+            if (source == null) return result;
+
+            foreach (object item in source)
+            {
+                if (item is ManagedShell.WindowsTray.NotifyIcon icon)
+                {
+                    result.Add(icon);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Sorts a list of icons by priority
+        /// </summary>
+        private List<ManagedShell.WindowsTray.NotifyIcon> SortIconList(List<ManagedShell.WindowsTray.NotifyIcon> icons)
+        {
+            return icons
+                .OrderBy(GetIconSortPriority)
+                .ThenBy(i => i?.Title ?? "")
+                .ToList();
+        }
+
+        /// <summary>
+        /// Rebuilds the sorted all icons collection
+        /// </summary>
+        private void RebuildSortedAllIcons()
+        {
+            if (NotificationArea == null) return;
+
+            try
+            {
+                var unpinned = ExtractIcons(NotificationArea.UnpinnedIcons);
+                var pinned = ExtractIcons(NotificationArea.PinnedIcons);
+
+                // Apply filter to unpinned AND exclude items
+                var filteredUnpinned = unpinned
+                    .Where(icon => UnpinnedNotifyIcons_Filter(icon) && !ShouldExcludeIcon(icon))
+                    .ToList();
+
+                // Also exclude from pinned
+                var filteredPinned = pinned
+                    .Where(icon => !ShouldExcludeIcon(icon))
+                    .ToList();
+
+                var all = filteredUnpinned.Concat(filteredPinned).ToList();
+                var sorted = SortIconList(all);
+
+                sortedAllIcons.Clear();
+                foreach (var icon in sorted)
+                {
+                    sortedAllIcons.Add(icon);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RetroBar] RebuildSortedAllIcons error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the sorted pinned icons collection
+        /// </summary>
+        private void RebuildSortedPinnedIcons()
+        {
+            if (NotificationArea == null) return;
+
+            try
+            {
+                var pinned = ExtractIcons(NotificationArea.PinnedIcons);
+                var promoted = promotedIcons.ToList();
+
+                // Exclude items from both collections
+                var filteredPinned = pinned
+                    .Where(icon => !ShouldExcludeIcon(icon))
+                    .ToList();
+
+                var filteredPromoted = promoted
+                    .Where(icon => !ShouldExcludeIcon(icon))
+                    .ToList();
+
+                var all = filteredPromoted.Concat(filteredPinned).ToList();
+                var sorted = SortIconList(all);
+
+                sortedPinnedIcons.Clear();
+                foreach (var icon in sorted)
+                {
+                    sortedPinnedIcons.Add(icon);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RetroBar] RebuildSortedPinnedIcons error: {ex.Message}");
+            }
+        }
+
+        private void RebuildAllSortedCollections()
+        {
+            RebuildSortedAllIcons();
+            RebuildSortedPinnedIcons();
+        }
+
+        #endregion
+
         private void Settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Settings.CollapseNotifyIcons))
             {
                 if (Settings.Instance.CollapseNotifyIcons)
                 {
-                    NotifyIcons.ItemsSource = pinnedNotifyIconsSource.View;
+                    RebuildSortedPinnedIcons();
+                    NotifyIcons.ItemsSource = sortedPinnedIcons;
                     SetToggleVisibility();
                 }
                 else
@@ -49,21 +207,23 @@ namespace RetroBar.Controls
                     NotifyIconToggleButton.IsChecked = false;
                     NotifyIconToggleButton.Visibility = Visibility.Collapsed;
 
-                    NotifyIcons.ItemsSource = allNotifyIconsSource.View;
+                    RebuildSortedAllIcons();
+                    NotifyIcons.ItemsSource = sortedAllIcons;
                 }
             }
             else if (e.PropertyName == nameof(Settings.InvertIconsMode) || e.PropertyName == nameof(Settings.InvertNotifyIcons))
             {
-                // Reload icons
                 NotifyIcons.ItemsSource = null;
 
                 if (Settings.Instance.CollapseNotifyIcons && NotifyIconToggleButton.IsChecked != true)
                 {
-                    NotifyIcons.ItemsSource = pinnedNotifyIconsSource.View;
+                    RebuildSortedPinnedIcons();
+                    NotifyIcons.ItemsSource = sortedPinnedIcons;
                 }
                 else
                 {
-                    NotifyIcons.ItemsSource = allNotifyIconsSource.View;
+                    RebuildSortedAllIcons();
+                    NotifyIcons.ItemsSource = sortedAllIcons;
                 }
             }
         }
@@ -72,25 +232,36 @@ namespace RetroBar.Controls
         {
             if (!_isLoaded && NotificationArea != null)
             {
-                CompositeCollection allNotifyIcons = new CompositeCollection();
-                allNotifyIcons.Add(new CollectionContainer { Collection = NotificationArea.UnpinnedIcons });
-                allNotifyIcons.Add(new CollectionContainer { Collection = NotificationArea.PinnedIcons });
+                // Keep original setup for filter functionality
+                CompositeCollection allNotifyIcons =
+                [
+                    new CollectionContainer { Collection = NotificationArea.UnpinnedIcons },
+                    new CollectionContainer { Collection = NotificationArea.PinnedIcons },
+                ];
                 allNotifyIconsSource = new CollectionViewSource { Source = allNotifyIcons };
                 NotificationArea.UnpinnedIcons.Filter = UnpinnedNotifyIcons_Filter;
 
-                CompositeCollection pinnedNotifyIcons = new CompositeCollection();
-                pinnedNotifyIcons.Add(new CollectionContainer { Collection = promotedIcons });
-                pinnedNotifyIcons.Add(new CollectionContainer { Collection = NotificationArea.PinnedIcons });
+                CompositeCollection pinnedNotifyIcons =
+                [
+                    new CollectionContainer { Collection = promotedIcons },
+                    new CollectionContainer { Collection = NotificationArea.PinnedIcons },
+                ];
                 pinnedNotifyIconsSource = new CollectionViewSource { Source = pinnedNotifyIcons };
 
+                // Subscribe to changes
                 NotificationArea.UnpinnedIcons.CollectionChanged += UnpinnedIcons_CollectionChanged;
+                NotificationArea.PinnedIcons.CollectionChanged += PinnedIcons_CollectionChanged;
                 NotificationArea.NotificationBalloonShown += NotificationArea_NotificationBalloonShown;
+                promotedIcons.CollectionChanged += PromotedIcons_CollectionChanged;
 
                 Settings.Instance.PropertyChanged += Settings_PropertyChanged;
 
+                // Build sorted collections
+                RebuildAllSortedCollections();
+
                 if (Settings.Instance.CollapseNotifyIcons)
                 {
-                    NotifyIcons.ItemsSource = pinnedNotifyIconsSource.View;
+                    NotifyIcons.ItemsSource = sortedPinnedIcons;
                     SetToggleVisibility();
 
                     if (NotifyIconToggleButton.IsChecked == true)
@@ -100,11 +271,27 @@ namespace RetroBar.Controls
                 }
                 else
                 {
-                    NotifyIcons.ItemsSource = allNotifyIconsSource.View;
+                    NotifyIcons.ItemsSource = sortedAllIcons;
                 }
 
                 _isLoaded = true;
             }
+        }
+
+        private void PinnedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                RebuildAllSortedCollections();
+            }), DispatcherPriority.Background);
+        }
+
+        private void PromotedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                RebuildSortedPinnedIcons();
+            }), DispatcherPriority.Background);
         }
 
         private static void NotificationAreaChangedCallback(DependencyObject sender, DependencyPropertyChangedEventArgs e)
@@ -119,16 +306,45 @@ namespace RetroBar.Controls
         {
             if (obj is ManagedShell.WindowsTray.NotifyIcon notifyIcon)
             {
+                // Exclude items with certain text
+                if (ShouldExcludeIcon(notifyIcon))
+                {
+                    return false;
+                }
+
                 return !notifyIcon.IsPinned && !notifyIcon.IsHidden && notifyIcon.GetBehavior() != NotifyIconBehavior.Remove;
             }
 
             return true;
         }
 
+        /// <summary>
+        /// Returns true if the icon should be excluded/hidden from the list
+        /// </summary>
+        private bool ShouldExcludeIcon(ManagedShell.WindowsTray.NotifyIcon icon)
+        {
+            if (icon == null || string.IsNullOrEmpty(icon.Title))
+                return false;
+
+            string title = icon.Title;
+
+            // Add your exclusion rules here
+            if (title.Contains("apps are using your microphone"))
+            {
+                return true;
+            }
+
+            // Add more exclusion rules as needed:
+            // if (title.Contains("Some other text"))
+            // {
+            //     return true;
+            // }
+
+            return false;
+        }
+
         private void NotificationArea_NotificationBalloonShown(object sender, NotificationBalloonEventArgs e)
         {
-            // This is used to promote unpinned icons to show when the tray is collapsed.
-
             if (NotificationArea == null)
             {
                 return;
@@ -136,21 +352,19 @@ namespace RetroBar.Controls
 
             ManagedShell.WindowsTray.NotifyIcon notifyIcon = e.Balloon.NotifyIcon;
 
-            if (NotificationArea.PinnedIcons.Contains(notifyIcon))
+            var pinnedIcons = ExtractIcons(NotificationArea.PinnedIcons);
+            if (pinnedIcons.Contains(notifyIcon))
             {
-                // Do not promote pinned icons (they're already there!)
                 return;
             }
 
             if (notifyIcon.GetBehavior() != NotifyIconBehavior.HideWhenInactive)
             {
-                // Do not promote icons that are always hidden
                 return;
             }
 
             if (promotedIcons.Contains(notifyIcon))
             {
-                // Do not duplicate promoted icons
                 return;
             }
 
@@ -158,9 +372,9 @@ namespace RetroBar.Controls
 
             DispatcherTimer unpromoteTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(e.Balloon.Timeout + 500) // Keep it around for a few ms for the animation to complete
+                Interval = TimeSpan.FromMilliseconds(e.Balloon.Timeout + 500)
             };
-            unpromoteTimer.Tick += (object sender, EventArgs e) =>
+            unpromoteTimer.Tick += (object s, EventArgs args) =>
             {
                 if (promotedIcons.Contains(notifyIcon))
                 {
@@ -188,8 +402,11 @@ namespace RetroBar.Controls
             if (NotificationArea != null)
             {
                 NotificationArea.UnpinnedIcons.CollectionChanged -= UnpinnedIcons_CollectionChanged;
+                NotificationArea.PinnedIcons.CollectionChanged -= PinnedIcons_CollectionChanged;
                 NotificationArea.NotificationBalloonShown -= NotificationArea_NotificationBalloonShown;
             }
+
+            promotedIcons.CollectionChanged -= PromotedIcons_CollectionChanged;
 
             _isLoaded = false;
         }
@@ -197,18 +414,24 @@ namespace RetroBar.Controls
         private void UnpinnedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             SetToggleVisibility();
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                RebuildAllSortedCollections();
+            }), DispatcherPriority.Background);
         }
 
         private void NotifyIconToggleButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (NotifyIconToggleButton.IsChecked == true)
             {
-
-                NotifyIcons.ItemsSource = allNotifyIconsSource.View;
+                RebuildSortedAllIcons();
+                NotifyIcons.ItemsSource = sortedAllIcons;
             }
             else
             {
-                NotifyIcons.ItemsSource = pinnedNotifyIconsSource.View;
+                RebuildSortedPinnedIcons();
+                NotifyIcons.ItemsSource = sortedPinnedIcons;
             }
         }
 

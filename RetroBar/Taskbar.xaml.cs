@@ -42,7 +42,7 @@ namespace RetroBar
         private readonly StartMenuMonitor _startMenuMonitor;
         private readonly Updater _updater;
         private bool _fullScreenSuppressed;
-        
+
         public WindowManager windowManager;
         public HotkeyManager hotkeyManager;
 
@@ -242,13 +242,13 @@ namespace RetroBar
             SetBlur(AllowsBlur());
             UpdateTrayPosition();
         }
-        
+
         protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             base.WndProc(hwnd, msg, wParam, lParam, ref handled);
 
-            if ((msg == (int)NativeMethods.WM.SYSCOLORCHANGE || 
-                    msg == (int)NativeMethods.WM.SETTINGCHANGE) && 
+            if ((msg == (int)NativeMethods.WM.SYSCOLORCHANGE ||
+                    msg == (int)NativeMethods.WM.SETTINGCHANGE) &&
                 Settings.Instance.Theme.StartsWith(DictionaryManager.THEME_DEFAULT))
             {
                 handled = true;
@@ -383,7 +383,12 @@ namespace RetroBar
 
         private void TaskManagerMenuItem_OnClick(object sender, RoutedEventArgs e)
         {
-            ShellHelper.StartTaskManager();
+            // ShellHelper.StartTaskManager();
+            Process.Start(@"C:\Programs\S\System Informer\SystemInformer.exe");
+        }
+        private void Taskbar_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start(@"C:\Programs\S\System Informer\SystemInformer.exe");
         }
 
         private void UpdateAvailableMenuItem_OnClick(object sender, RoutedEventArgs e)
@@ -619,7 +624,8 @@ namespace RetroBar
 
                     if (_mouseDragResize)
                     {
-                        Dispatcher.BeginInvoke(() => {
+                        Dispatcher.BeginInvoke(() =>
+                        {
                             int mouseX = e.HookStruct.pt.X;
                             int mouseY = e.HookStruct.pt.Y;
                             // Calculate where the resize edge should be, in case the actual resize operation is lagging behind the mouse

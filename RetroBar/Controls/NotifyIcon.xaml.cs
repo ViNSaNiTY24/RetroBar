@@ -73,6 +73,8 @@ namespace RetroBar.Controls
                     return;
                 }
 
+                // System.Diagnostics.Debug.WriteLine($"[RetroBar Debug] Loading NotifyIcon: Title='{TrayIcon.Title}', GUID='{TrayIcon.GUID}', HWND='{TrayIcon.HWnd}', Path='{TrayIcon.Path}'");
+
                 applyEffects();
 
                 TrayIcon.NotificationBalloonShown += TrayIcon_NotificationBalloonShown;

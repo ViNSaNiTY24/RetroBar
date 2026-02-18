@@ -475,7 +475,7 @@ namespace RetroBar.Controls
             uint GetType, GetData;
             uint GetLen = REG_SIZE_DWORD;
 
-            if ((ChkWk = RegOpenKey((UIntPtr)RegistryHive.CurrentUser, RegKeyStrKanaMd, out hKey)) != ERROR_SUCCESS)
+            if ((ChkWk = RegOpenKey(unchecked((UIntPtr)(uint)RegistryHive.CurrentUser), RegKeyStrKanaMd, out hKey)) != ERROR_SUCCESS)
                 return false;   // If unknown, treat as "roma"
 
             ChkWk = RegQueryValueEx(hKey, "kanaMd", (IntPtr)0, out GetType, out GetData, ref GetLen);

@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -84,6 +85,19 @@ namespace RetroBar.Controls
             SetStartMenuState(false);
         }
 
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+        private void SendCustomKeyCombo()
+        {
+            keybd_event(0x11, 0, 0, UIntPtr.Zero);          // CTRL down
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);          // ALT down  
+            keybd_event(0x7B, 0, 0, UIntPtr.Zero);          // F12 down
+
+            keybd_event(0x7B, 0, 0x0002, UIntPtr.Zero);     // F12 up
+            keybd_event(0x12, 0, 0x0002, UIntPtr.Zero);     // ALT up
+            keybd_event(0x11, 0, 0x0002, UIntPtr.Zero);     // CTRL up
+        }
+
         private void OpenStartMenu()
         {
             Host?.SetTrayHost();
@@ -95,7 +109,8 @@ namespace RetroBar.Controls
             }
             else
             {
-                ShellHelper.ShowStartMenu();
+                SendCustomKeyCombo();
+                // ShellHelper.ShowStartMenu();
             }
         }
 

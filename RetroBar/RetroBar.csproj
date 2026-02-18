@@ -1,59 +1,102 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFrameworks>netcoreapp3.1;net480;net6.0-windows</TargetFrameworks>
-    <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
-    <StartupObject>RetroBar.Program</StartupObject>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.0.8</AssemblyVersion>
-    <FileVersion>1.0.0.8</FileVersion>
-    <ApplicationIcon>Resources\retrobar.ico</ApplicationIcon>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Platforms>AnyCPU;x86;ARM64</Platforms>
-    <LangVersion>12</LangVersion>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFrameworks>net10.0-windows</TargetFrameworks>
+        <UseWPF>true</UseWPF>
+        <UseWindowsForms>true</UseWindowsForms>
+        <StartupObject>RetroBar.Program</StartupObject>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AssemblyVersion>1.0.0.8</AssemblyVersion>
+        <FileVersion>1.0.0.8</FileVersion>
+        <ApplicationIcon>Resources\retrobar.ico</ApplicationIcon>
+        <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+        <Platforms>AnyCPU;x86;ARM64</Platforms>
+        <LangVersion>12</LangVersion>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <Nullable>disable</Nullable>
+        <PlatformTarget>x64</PlatformTarget>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="Resources\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Languages\*.xaml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Themes\*.xaml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+        <None Include="Resources\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <SubType>Designer</SubType>
+        </None>
+        <None Include="Languages\*.xaml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <SubType>Designer</SubType>
+        </None>
+        <None Include="Themes\*.xaml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <SubType>Designer</SubType>
+        </None>
+    </ItemGroup>
 
-  <ItemGroup>
-	<None Remove="Resources\desktop95-sm.png" />
-	<None Remove="Resources\desktop95-lg.png" />
-    <None Remove="Resources\retrobar.ico" />
-    <None Remove="Resources\shader_invert.ps" />
-    <None Remove="Resources\start9x.png" />
-    <None Remove="Languages\English.xaml" />
-    <None Remove="Themes\System.xaml" />
-  </ItemGroup>
+    <ItemGroup>
+        <None Remove="Resources\desktop95-sm.png" />
+        <None Remove="Resources\desktop95-lg.png" />
+        <None Remove="Resources\retrobar.ico" />
+        <None Remove="Resources\shader_invert.ps" />
+        <None Remove="Resources\start9x.png" />
+        <None Remove="Languages\English.xaml" />
+        <None Remove="Themes\System.xaml" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="gong-wpf-dragdrop" Version="3.1.1" />
-    <PackageReference Include="ManagedShell" Version="0.0.330" />
-    <PackageReference Include="System.Net.Http.Json" Version="6.0.2" />
-  </ItemGroup>
+    <!-- REMOVED: NuGet PackageReferences -->
+    <!-- 
+    <ItemGroup>
+        <PackageReference Include="gong-wpf-dragdrop" Version="3.1.1" />
+        <PackageReference Include="ManagedShell" Version="0.0.330" />
+        <PackageReference Include="System.Net.Http.Json" Version="6.0.2" />
+    </ItemGroup>
+    -->
 
-  <ItemGroup>
-	<Resource Include="Resources\desktop95-sm.png" />
-	<Resource Include="Resources\desktop95-lg.png" />
-    <Resource Include="Resources\shader_invert.ps" />
-    <Resource Include="Resources\retrobar.ico">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\start9x.png" />
-  </ItemGroup>
+    <!-- NEW: Direct DLL References -->
+    <ItemGroup>
+        <Reference Include="GongSolutions.WPF.DragDrop">
+            <HintPath>bin\Debug\GongSolutions.WPF.DragDrop.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell">
+            <HintPath>bin\Debug\ManagedShell.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.AppBar">
+            <HintPath>bin\Debug\ManagedShell.AppBar.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.Common">
+            <HintPath>bin\Debug\ManagedShell.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.Interop">
+            <HintPath>bin\Debug\ManagedShell.Interop.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.ShellFolders">
+            <HintPath>bin\Debug\ManagedShell.ShellFolders.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.UWPInterop">
+            <HintPath>bin\Debug\ManagedShell.UWPInterop.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.WindowsTasks">
+            <HintPath>bin\Debug\ManagedShell.WindowsTasks.dll</HintPath>
+        </Reference>
+        <Reference Include="ManagedShell.WindowsTray">
+            <HintPath>bin\Debug\ManagedShell.WindowsTray.dll</HintPath>
+        </Reference>
+        <Reference Include="System.Data.OleDb">
+            <HintPath>bin\Debug\System.Data.OleDb.dll</HintPath>
+        </Reference>
+        <Reference Include="System.ServiceProcess.ServiceController">
+            <HintPath>bin\Debug\System.ServiceProcess.ServiceController.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Resource Include="Resources\desktop95-sm.png" />
+        <Resource Include="Resources\desktop95-lg.png" />
+        <Resource Include="Resources\shader_invert.ps" />
+        <Resource Include="Resources\retrobar.ico">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Resource>
+        <Resource Include="Resources\start9x.png" />
+    </ItemGroup>
 
 </Project>

@@ -15,8 +15,8 @@ namespace RetroBar.Utilities
 
         public ManagedShellLogger()
         {
-            SetupLogging();
-            Settings.Instance.PropertyChanged += Settings_PropertyChanged;
+            // SetupLogging();
+            // Settings.Instance.PropertyChanged += Settings_PropertyChanged;
         }
 
         private void Settings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
