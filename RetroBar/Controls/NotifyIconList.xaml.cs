@@ -55,25 +55,21 @@ namespace RetroBar.Controls
 
             string title = icon.Title;
 
-            // Priority 1: Icons containing "GB" (like "35.11 GB") or "Twitch.ahk"
-            if (title.Contains("GB") || title.Contains("Twitch.ahk"))
+            if (title.Contains("GB") && icon.Path.Contains("AutoHotkey64.exe") || title.Contains("Twitch.ahk") && icon.Path.Contains("AutoHotkey64.exe"))
             {
                 return 1;
             }
 
-            // Priority 2: VSTHost
             if (title.Contains("VSTHost"))
             {
                 return 2;
             }
 
-            // Priority 3: Safely Remove Hardware
             if (title.Contains("Safely Remove Hardware"))
             {
                 return 9998;
             }
 
-            // Always last: Speakers
             if (title.Contains("Speakers:"))
             {
                 return 9999;

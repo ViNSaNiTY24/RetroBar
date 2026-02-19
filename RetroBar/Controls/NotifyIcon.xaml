@@ -7,6 +7,8 @@
     <StackPanel>
         <Border x:Name="NotifyIconBorder"
                 ToolTip="{Binding Path=Title}"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.BetweenShowDelay="500"
                 MouseUp="NotifyIcon_OnMouseUp"
                 MouseDown="NotifyIcon_OnMouseDown"
                 MouseEnter="NotifyIcon_OnMouseEnter"

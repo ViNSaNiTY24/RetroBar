@@ -418,6 +418,11 @@ namespace RetroBar
                 ((App)Application.Current).ExitGracefully();
             }
         }
+
+        private void RepositionMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            RecalculateSize();
+        }
         #endregion
 
         private void RecalculateSize(bool performResize = true)
