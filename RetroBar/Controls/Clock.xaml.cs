@@ -115,7 +115,7 @@ namespace RetroBar.Controls
                 {
                     BindingOperations.SetBinding(main, TextBlock.TextProperty,
                         new Binding(binding.Path.Path)
-                            { StringFormat = binding.StringFormat, ConverterCulture = ci });
+                        { StringFormat = binding.StringFormat, ConverterCulture = ci });
                 }
 
                 for (int i = 0; i < VisualTreeHelper.GetChildrenCount(main); i++)

@@ -225,6 +225,7 @@
                 Value="{DynamicResource ButtonForeground}" />
         <Setter Property="Margin"
                 Value="0,0,3,-1" />
+        <Setter Property="Width" Value="100"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -307,6 +308,7 @@
            BasedOn="{StaticResource TaskButton}">
         <Setter Property="FontWeight"
                 Value="Bold" />
+        <Setter Property="Width" Value="100"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">

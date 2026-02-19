@@ -5,10 +5,26 @@
         MouseDoubleClick="Clock_OnMouseDoubleClick"
         Loaded="UserControl_Loaded"
         Unloaded="UserControl_Unloaded"
-        ToolTipService.InitialShowDelay="500"
-        ToolTipService.BetweenShowDelay="500"
-        Template="{DynamicResource ClockTemplateKey}">
+        ToolTipService.InitialShowDelay="0"
+        ToolTipService.BetweenShowDelay="0">
+        <StackPanel VerticalAlignment="Center" TextOptions.TextFormattingMode="Display">
+            <TextBlock Text="{Binding Path=Now, StringFormat=t, Mode=OneWay}" 
+                    HorizontalAlignment="Center"
+                    Foreground="White"
+                    FontFamily="Tahoma" 
+                    FontSize="12"
+                    Style="{DynamicResource ClockText}" />
+            <TextBlock Text="{Binding Path=Now, StringFormat={}{0:M/dd/yy}, Mode=OneWay}" 
+                    HorizontalAlignment="Center"
+                    Foreground="White"
+                    FontFamily="Tahoma"
+                    FontSize="12"
+                    Margin="0,-2,0,0"
+                    Style="{DynamicResource ClockText}" />
+        </StackPanel>
     <UserControl.ToolTip>
-        <TextBlock Text="{Binding Path=Now, StringFormat=D, Mode=OneWay}" Name="ClockTip" />
+        <ToolTip FontSize="12">
+            <TextBlock Text="{Binding Path=Now, StringFormat=D, Mode=OneWay}" Name="ClockTip" />
+        </ToolTip>
     </UserControl.ToolTip>
 </UserControl>

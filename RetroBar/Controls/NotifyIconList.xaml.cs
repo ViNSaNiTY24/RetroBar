@@ -1,14 +1,16 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
+using ManagedShell.Common.Helpers;
 using ManagedShell.WindowsTray;
 using RetroBar.Extensions;
 using RetroBar.Utilities;
@@ -20,6 +22,10 @@ namespace RetroBar.Controls
     /// </summary>
     public partial class NotifyIconList : UserControl
     {
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsWindow(IntPtr hWnd);
+
         private bool _isLoaded;
         private CollectionViewSource allNotifyIconsSource;
         private CollectionViewSource pinnedNotifyIconsSource;
@@ -28,6 +34,7 @@ namespace RetroBar.Controls
         // Sorted collections
         private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedAllIcons = [];
         private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedPinnedIcons = [];
+        private DispatcherTimer cleanupTimer;
 
         public static DependencyProperty NotificationAreaProperty = DependencyProperty.Register(nameof(NotificationArea), typeof(NotificationArea), typeof(NotifyIconList), new PropertyMetadata(NotificationAreaChangedCallback));
 
@@ -40,6 +47,40 @@ namespace RetroBar.Controls
         public NotifyIconList()
         {
             InitializeComponent();
+
+            // Timer to clean up ghost icons from forcefully closed apps
+            cleanupTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(3)
+            };
+            cleanupTimer.Tick += CleanupTimer_Tick;
+            cleanupTimer.Start();
+        }
+
+        private void CleanupTimer_Tick(object sender, EventArgs e)
+        {
+            if (NotificationArea == null) return;
+
+            try
+            {
+                var unpinned = ExtractIcons(NotificationArea.UnpinnedIcons);
+                var pinned = ExtractIcons(NotificationArea.PinnedIcons);
+                var allIcons = unpinned.Concat(pinned).ToList();
+
+                foreach (var icon in allIcons)
+                {
+                    if (icon != null && icon.HWnd != IntPtr.Zero && !IsWindow(icon.HWnd))
+                    {
+                        // Simulating a mouse event forces ManagedShell to verify the window handle.
+                        // When it detects the window is dead, it will remove the stale icon.
+                        icon.IconMouseMove(MouseHelper.GetCursorPositionParam());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RetroBar] Cleanup error: {ex.Message}");
+            }
         }
 
         #region Custom Sorting
@@ -388,6 +429,11 @@ namespace RetroBar.Controls
 
         private void NotifyIconList_OnUnloaded(object sender, RoutedEventArgs e)
         {
+            if (cleanupTimer != null)
+            {
+                cleanupTimer.Stop();
+            }
+
             if (!_isLoaded)
             {
                 return;

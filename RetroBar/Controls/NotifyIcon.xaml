@@ -1,25 +1,29 @@
 ﻿<UserControl x:Class="RetroBar.Controls.NotifyIcon"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:RetroBar.Controls"
-             Loaded="NotifyIcon_OnLoaded"
-             Unloaded="NotifyIcon_OnUnloaded">
+            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:local="clr-namespace:RetroBar.Controls"
+            Loaded="NotifyIcon_OnLoaded"
+            Unloaded="NotifyIcon_OnUnloaded">
     <StackPanel>
-        <Border x:Name="NotifyIconBorder"
-                ToolTip="{Binding Path=Title}"
-                ToolTipService.InitialShowDelay="500"
-                ToolTipService.BetweenShowDelay="500"
-                MouseUp="NotifyIcon_OnMouseUp"
-                MouseDown="NotifyIcon_OnMouseDown"
-                MouseEnter="NotifyIcon_OnMouseEnter"
-                MouseLeave="NotifyIcon_OnMouseLeave"
-                MouseMove="NotifyIcon_OnMouseMove"
-                PreviewMouseWheel="NotifyIcon_OnPreviewMouseWheel">
-            <Image Source="{Binding Path=Icon, Mode=OneWay}"
-                   Focusable="True"
-                   Name="NotifyIconImage"
-                   Style="{DynamicResource NotifyIcon}" />
-        </Border>
+    <Border x:Name="NotifyIconBorder"
+            ToolTipService.InitialShowDelay="0"
+            ToolTipService.BetweenShowDelay="0"
+            MouseUp="NotifyIcon_OnMouseUp"
+            MouseDown="NotifyIcon_OnMouseDown"
+            MouseEnter="NotifyIcon_OnMouseEnter"
+            MouseLeave="NotifyIcon_OnMouseLeave"
+            MouseMove="NotifyIcon_OnMouseMove"
+            PreviewMouseWheel="NotifyIcon_OnPreviewMouseWheel">
+        <Border.ToolTip>
+            <ToolTip FontSize="12">
+                <TextBlock Text="{Binding Path=Title}" />
+            </ToolTip>
+        </Border.ToolTip>
+        <Image Source="{Binding Path=Icon, Mode=OneWay}"
+            Focusable="True"
+            Name="NotifyIconImage"
+            Style="{DynamicResource NotifyIcon}" />
+    </Border>
         <local:NotifyBalloon x:Name="BalloonControl" />
     </StackPanel>
 </UserControl>
