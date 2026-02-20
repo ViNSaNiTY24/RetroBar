@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -26,6 +27,9 @@ namespace RetroBar.Controls
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool IsWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
         private bool _isLoaded;
         private CollectionViewSource allNotifyIconsSource;
         private CollectionViewSource pinnedNotifyIconsSource;
@@ -34,7 +38,6 @@ namespace RetroBar.Controls
         // Sorted collections
         private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedAllIcons = [];
         private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedPinnedIcons = [];
-        private DispatcherTimer cleanupTimer;
 
         public static DependencyProperty NotificationAreaProperty = DependencyProperty.Register(nameof(NotificationArea), typeof(NotificationArea), typeof(NotifyIconList), new PropertyMetadata(NotificationAreaChangedCallback));
 
@@ -47,41 +50,66 @@ namespace RetroBar.Controls
         public NotifyIconList()
         {
             InitializeComponent();
-
-            // Timer to clean up ghost icons from forcefully closed apps
-            cleanupTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(3)
-            };
-            cleanupTimer.Tick += CleanupTimer_Tick;
-            cleanupTimer.Start();
         }
 
-        private void CleanupTimer_Tick(object sender, EventArgs e)
+        #region Ghost Icon Cleanup (Event-Driven)
+
+        private void MonitorIconProcess(ManagedShell.WindowsTray.NotifyIcon icon)
         {
-            if (NotificationArea == null) return;
+            if (icon == null || icon.HWnd == IntPtr.Zero) return;
+
+            GetWindowThreadProcessId(icon.HWnd, out uint processId);
+
+            if (processId == 0) return;
 
             try
             {
-                var unpinned = ExtractIcons(NotificationArea.UnpinnedIcons);
-                var pinned = ExtractIcons(NotificationArea.PinnedIcons);
-                var allIcons = unpinned.Concat(pinned).ToList();
+                Process process = Process.GetProcessById((int)processId);
 
-                foreach (var icon in allIcons)
+                // If the process is already dead, clean it up immediately
+                if (process.HasExited)
                 {
-                    if (icon != null && icon.HWnd != IntPtr.Zero && !IsWindow(icon.HWnd))
-                    {
-                        // Simulating a mouse event forces ManagedShell to verify the window handle.
-                        // When it detects the window is dead, it will remove the stale icon.
-                        icon.IconMouseMove(MouseHelper.GetCursorPositionParam());
-                    }
+                    CleanUpGhostIcon(icon);
+                    process.Dispose();
+                    return;
                 }
+
+                process.EnableRaisingEvents = true;
+                process.Exited += (sender, args) =>
+                {
+                    // The process just crashed or closed! Clean up the icon.
+                    CleanUpGhostIcon(icon);
+
+                    // Clean up the process object from memory
+                    if (sender is Process p) p.Dispose();
+                };
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RetroBar] Cleanup error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[RetroBar] Could not monitor process {processId}: {ex.Message}");
+                // If we get an Access Denied exception (e.g. for an elevated app), the process is running 
+                // but we can't hook it. Only clean up if the window itself is actually dead.
+                if (!IsWindow(icon.HWnd))
+                {
+                    CleanUpGhostIcon(icon);
+                }
             }
         }
+
+        private void CleanUpGhostIcon(ManagedShell.WindowsTray.NotifyIcon icon)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (icon != null && icon.HWnd != IntPtr.Zero && !IsWindow(icon.HWnd))
+                {
+                    // Simulating a mouse event forces ManagedShell to verify the window handle.
+                    // When it detects the window is dead, it will remove the stale icon.
+                    icon.IconMouseMove(MouseHelper.GetCursorPositionParam());
+                }
+            }), DispatcherPriority.Background);
+        }
+
+        #endregion
 
         #region Custom Sorting
 
@@ -293,6 +321,10 @@ namespace RetroBar.Controls
 
                 Settings.Instance.PropertyChanged += Settings_PropertyChanged;
 
+                // Monitor initially loaded icons for ghost cleanup
+                foreach (var icon in ExtractIcons(NotificationArea.UnpinnedIcons)) MonitorIconProcess(icon);
+                foreach (var icon in ExtractIcons(NotificationArea.PinnedIcons)) MonitorIconProcess(icon);
+
                 // Build sorted collections
                 RebuildAllSortedCollections();
 
@@ -317,6 +349,15 @@ namespace RetroBar.Controls
 
         private void PinnedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            // Monitor newly added icons for ghost cleanup
+            if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
+            {
+                foreach (ManagedShell.WindowsTray.NotifyIcon icon in e.NewItems)
+                {
+                    MonitorIconProcess(icon);
+                }
+            }
+
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 RebuildAllSortedCollections();
@@ -429,11 +470,6 @@ namespace RetroBar.Controls
 
         private void NotifyIconList_OnUnloaded(object sender, RoutedEventArgs e)
         {
-            if (cleanupTimer != null)
-            {
-                cleanupTimer.Stop();
-            }
-
             if (!_isLoaded)
             {
                 return;
@@ -456,6 +492,15 @@ namespace RetroBar.Controls
         private void UnpinnedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             SetToggleVisibility();
+
+            // Monitor newly added icons for ghost cleanup
+            if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
+            {
+                foreach (ManagedShell.WindowsTray.NotifyIcon icon in e.NewItems)
+                {
+                    MonitorIconProcess(icon);
+                }
+            }
 
             Dispatcher.BeginInvoke(new Action(() =>
             {

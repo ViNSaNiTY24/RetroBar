@@ -6,6 +6,8 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Diagnostics;
 
 namespace RetroBar.Controls
 {
@@ -214,6 +216,10 @@ namespace RetroBar.Controls
         private void TaskList_OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
             SetTaskButtonWidth();
+        }
+        private void TaskList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start(@"C:\Programs\S\System Informer\SystemInformer.exe");
         }
 
         private void SetTaskButtonWidth()

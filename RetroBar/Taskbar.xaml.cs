@@ -386,10 +386,6 @@ namespace RetroBar
             // ShellHelper.StartTaskManager();
             Process.Start(@"C:\Programs\S\System Informer\SystemInformer.exe");
         }
-        private void Taskbar_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            Process.Start(@"C:\Programs\S\System Informer\SystemInformer.exe");
-        }
 
         private void UpdateAvailableMenuItem_OnClick(object sender, RoutedEventArgs e)
         {
