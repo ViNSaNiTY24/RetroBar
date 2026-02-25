@@ -30,7 +30,6 @@
             <MenuItem x:Shared="false" x:Key="CustomizeNotificationsMenuItem" Header="{DynamicResource customize_notifications_menu}" Click="CustomizeNotificationsMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="TaskManagerMenuItem" Style="{DynamicResource TaskManMenuItem}" Click="TaskManagerMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="LockTaskbarMenuItem" Header="{DynamicResource lock_taskbar_menu}" IsCheckable="True" IsChecked="{Binding Source={x:Static utilities:Settings.Instance}, Path=LockTaskbar, UpdateSourceTrigger=PropertyChanged}" />
-            <MenuItem x:Shared="false" x:Key="RepositionMenuItem" Header="Reposition" Click="RepositionMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="PropertiesMenuItem" Header="{DynamicResource tray_properties}" Click="PropertiesMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="ExitMenuItem" Header="{DynamicResource exit_retrobar}" Click="ExitMenuItem_OnClick" Visibility="{Binding Source={x:Static utilities:Settings.Instance}, Path=ShowExitMenuItem, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource boolToVisibilityConverter}}" />
         </ResourceDictionary>
@@ -43,8 +42,8 @@
     </TextOptions.TextFormattingMode>
     <TextOptions.TextRenderingMode>
         <Binding Source="{x:Static utilities:Settings.Instance}"
-                 Path="AllowFontSmoothing"
-                 Converter="{StaticResource textRenderingModeConverter}" />
+                Path="AllowFontSmoothing"
+                Converter="{StaticResource textRenderingModeConverter}" />
     </TextOptions.TextRenderingMode>
     <ContentControl Style="{DynamicResource Taskbar}" x:Name="TaskbarContentControl">
         <ContentControl.LayoutTransform>
@@ -57,23 +56,23 @@
         <DockPanel>
             <Button Visibility="Collapsed" x:Name="FocusDummyButton" />
             <controls:StartButton x:Name="StartButton"
-                                  Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}">
+                                Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}">
                 <DockPanel.Dock>
                     <Binding Converter="{StaticResource dockOrientationConverter}"
-                             ConverterParameter="leading"
-                             Path="Orientation"
-                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                            ConverterParameter="leading"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                 </DockPanel.Dock>
             </controls:StartButton>
             <controls:Toolbar x:Name="QuickLaunchToolbar"
-                              Visibility="Collapsed"
-                              Path="{Binding Source={x:Static utilities:Settings.Instance}, Path=QuickLaunchPath}"
-                              Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}">
+                            Visibility="Collapsed"
+                            Path="{Binding Source={x:Static utilities:Settings.Instance}, Path=QuickLaunchPath}"
+                            Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}">
                 <DockPanel.Dock>
                     <Binding Converter="{StaticResource dockOrientationConverter}"
-                             ConverterParameter="leading"
-                             Path="Orientation"
-                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                            ConverterParameter="leading"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                 </DockPanel.Dock>
             </controls:Toolbar>
             <controls:ShowDesktopButton x:Name="ShowDesktopButtonTray"
@@ -81,9 +80,9 @@
                                         Visibility="Collapsed">
                 <DockPanel.Dock>
                     <Binding Converter="{StaticResource dockOrientationConverter}"
-                             ConverterParameter="trailing"
-                             Path="Orientation"
-                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                            ConverterParameter="trailing"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                 </DockPanel.Dock>
             </controls:ShowDesktopButton>
             <GroupBox Style="{DynamicResource Tray}">
@@ -103,32 +102,32 @@
                 </GroupBox.ContextMenu>
                 <DockPanel.Dock>
                     <Binding Converter="{StaticResource dockOrientationConverter}"
-                             ConverterParameter="trailing"
-                             Path="Orientation"
-                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                            ConverterParameter="trailing"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                 </DockPanel.Dock>
                 <StackPanel>
                     <StackPanel.Orientation>
                         <Binding Converter="{StaticResource edgeOrientationConverter}"
-                                 Path="Orientation"
-                                 RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                                Path="Orientation"
+                                RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                     </StackPanel.Orientation>
                     <controls:NotifyIconList NotificationArea="{Binding NotificationArea}" />
                     <controls:Clock VerticalAlignment="Center" />
                 </StackPanel>
             </GroupBox>
             <controls:InputLanguage VerticalAlignment="Stretch"
-                                     HorizontalAlignment="Stretch">
+                                    HorizontalAlignment="Stretch">
                 <DockPanel.Dock>
                     <Binding Converter="{StaticResource dockOrientationConverter}"
-                             ConverterParameter="trailing"
-                             Path="Orientation"
-                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                            ConverterParameter="trailing"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                 </DockPanel.Dock>
             </controls:InputLanguage>
             <controls:TaskList VerticalAlignment="Stretch"
-                               Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
-                               Tasks="{Binding Tasks}"></controls:TaskList>
+                            Host="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
+                            Tasks="{Binding Tasks}"></controls:TaskList>
         </DockPanel>
     </ContentControl>
     <appbar:AppBarWindow.ContextMenu>
@@ -139,12 +138,11 @@
             <StaticResourceExtension ResourceKey="TaskManagerMenuItem" />
             <Separator />
             <MenuItem x:Name="UpdateAvailableMenuItem"
-                      Header="{DynamicResource update_available}"
-                      Click="UpdateAvailableMenuItem_OnClick"
-                      FontWeight="Bold"
-                      Visibility="Collapsed" />
+                    Header="{DynamicResource update_available}"
+                    Click="UpdateAvailableMenuItem_OnClick"
+                    FontWeight="Bold"
+                    Visibility="Collapsed" />
             <StaticResourceExtension ResourceKey="LockTaskbarMenuItem" />
-            <StaticResourceExtension ResourceKey="RepositionMenuItem" />
             <StaticResourceExtension ResourceKey="PropertiesMenuItem" />
             <StaticResourceExtension ResourceKey="ExitMenuItem" />
         </ContextMenu>

@@ -1,4 +1,4 @@
-﻿using ManagedShell;
+using ManagedShell;
 using ManagedShell.AppBar;
 using ManagedShell.Common.Helpers;
 using ManagedShell.Common.Logging;
@@ -533,7 +533,7 @@ namespace RetroBar
         private bool AllowsBlur()
         {
             return Settings.Instance.AllowBlurBehind &&
-                   (Application.Current.FindResource("AllowsTransparency") as bool? ?? false);
+                (Application.Current.FindResource("AllowsTransparency") as bool? ?? false);
         }
 
         #region Unlocked taskbar drag hook
@@ -635,15 +635,15 @@ namespace RetroBar
                             {
                                 double taskbarEdge = AppBarEdge == AppBarEdge.Top ? Screen.Bounds.Top + (DesiredHeight * DpiScale) : Screen.Bounds.Bottom - (DesiredHeight * DpiScale);
                                 if ((AppBarEdge == AppBarEdge.Top && mouseY < taskbarEdge - SystemParameters.MinimumVerticalDragDistance ||
-                                     AppBarEdge == AppBarEdge.Bottom && mouseY > taskbarEdge + SystemParameters.MinimumVerticalDragDistance) &&
-                                     Settings.Instance.RowCount > 1)
+                                    AppBarEdge == AppBarEdge.Bottom && mouseY > taskbarEdge + SystemParameters.MinimumVerticalDragDistance) &&
+                                    Settings.Instance.RowCount > 1)
                                 {
                                     // If mouse is inside the taskbar and more than the minimum drag distance away, decrement size
                                     Settings.Instance.RowCount -= 1;
                                 }
                                 else if ((AppBarEdge == AppBarEdge.Top && mouseY >= taskbarEdge + scaledRowHeight ||
-                                          AppBarEdge == AppBarEdge.Bottom && mouseY <= taskbarEdge - scaledRowHeight) &&
-                                          Settings.Instance.RowCount < Settings.Instance.RowLimit)
+                                        AppBarEdge == AppBarEdge.Bottom && mouseY <= taskbarEdge - scaledRowHeight) &&
+                                        Settings.Instance.RowCount < Settings.Instance.RowLimit)
                                 {
                                     // If mouse is outside the taskbar and at least one row height away, increment size
                                     Settings.Instance.RowCount += 1;
@@ -653,13 +653,13 @@ namespace RetroBar
                             {
                                 double taskbarEdge = AppBarEdge == AppBarEdge.Left ? Screen.Bounds.Left + (DesiredWidth * DpiScale) : Screen.Bounds.Right - (DesiredWidth * DpiScale);
                                 if ((AppBarEdge == AppBarEdge.Left && mouseX > taskbarEdge + scaledRowHeight ||
-                                     AppBarEdge == AppBarEdge.Right && mouseX < taskbarEdge - scaledRowHeight) &&
+                                    AppBarEdge == AppBarEdge.Right && mouseX < taskbarEdge - scaledRowHeight) &&
                                     Settings.Instance.TaskbarWidth < Settings.Instance.TaskbarWidthLimit)
                                 {
                                     Settings.Instance.TaskbarWidth += 1;
                                 }
                                 else if ((AppBarEdge == AppBarEdge.Left && mouseX < taskbarEdge - SystemParameters.MinimumHorizontalDragDistance ||
-                                          AppBarEdge == AppBarEdge.Right && mouseX > taskbarEdge + SystemParameters.MinimumHorizontalDragDistance) &&
+                                        AppBarEdge == AppBarEdge.Right && mouseX > taskbarEdge + SystemParameters.MinimumHorizontalDragDistance) &&
                                     Settings.Instance.TaskbarWidth > 1)
                                 {
                                     Settings.Instance.TaskbarWidth -= 1;
