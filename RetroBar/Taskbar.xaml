@@ -116,6 +116,39 @@
                     <controls:Clock VerticalAlignment="Center" />
                 </StackPanel>
             </GroupBox>
+            <Border x:Name="CommandBarBorder"
+                    Style="{DynamicResource TaskbarCommandContainer}"
+                    Visibility="Collapsed">
+                <DockPanel.Dock>
+                    <Binding Converter="{StaticResource dockOrientationConverter}"
+                            ConverterParameter="trailing"
+                            Path="Orientation"
+                            RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
+                </DockPanel.Dock>
+                <Grid>
+                    <TextBox x:Name="CommandInputTextBox"
+                             Style="{DynamicResource TaskbarCommandTextBox}"
+                             TextChanged="CommandInputTextBox_OnTextChanged"
+                             PreviewKeyDown="CommandInputTextBox_OnPreviewKeyDown"
+                             GotKeyboardFocus="CommandInputTextBox_OnGotKeyboardFocus"
+                             LostKeyboardFocus="CommandControl_OnLostKeyboardFocus" />
+                    <Popup x:Name="CommandSuggestionsPopup"
+                           PlacementTarget="{Binding ElementName=CommandInputTextBox}"
+                           StaysOpen="True"
+                           AllowsTransparency="True"
+                           PopupAnimation="Fade">
+                        <Border Style="{DynamicResource TaskbarCommandSuggestionsBorder}"
+                                MinWidth="{Binding ElementName=CommandInputTextBox, Path=ActualWidth}">
+                            <ListBox x:Name="CommandSuggestionsListBox"
+                                     Style="{DynamicResource TaskbarCommandSuggestionsListBox}"
+                                     DisplayMemberPath="Name"
+                                     PreviewKeyDown="CommandSuggestionsListBox_OnPreviewKeyDown"
+                                     PreviewMouseLeftButtonUp="CommandSuggestionsListBox_OnPreviewMouseLeftButtonUp"
+                                     LostKeyboardFocus="CommandControl_OnLostKeyboardFocus" />
+                        </Border>
+                    </Popup>
+                </Grid>
+            </Border>
             <controls:InputLanguage VerticalAlignment="Stretch"
                                     HorizontalAlignment="Stretch">
                 <DockPanel.Dock>

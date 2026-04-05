@@ -6,10 +6,14 @@ using ManagedShell.Interop;
 using ManagedShell.WindowsTray;
 using RetroBar.Utilities;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Application = System.Windows.Application;
 
@@ -41,10 +45,24 @@ namespace RetroBar
         private readonly ShellManager _shellManager;
         private readonly StartMenuMonitor _startMenuMonitor;
         private readonly Updater _updater;
+        private readonly TaskbarCommandRegistry _commandRegistry;
+        private readonly ObservableCollection<TaskbarCommandDefinition> _filteredCommands = [];
         private bool _fullScreenSuppressed;
 
         public WindowManager windowManager;
         public HotkeyManager hotkeyManager;
+
+        internal DictionaryManager DictionaryManager => _dictionaryManager;
+
+        internal ShellManager ShellManager => _shellManager;
+
+        internal AppBarScreen TaskbarScreen => Screen;
+
+        internal double TaskbarDpiScale => DpiScale;
+
+        internal Orientation TaskbarOrientation => Orientation;
+
+        internal double PropertiesWindowBarSize => Orientation == Orientation.Horizontal ? DesiredHeight : DesiredWidth;
 
         public Taskbar(WindowManager windowManager, DictionaryManager dictionaryManager, ShellManager shellManager, StartMenuMonitor startMenuMonitor, Updater updater, HotkeyManager hotkeyManager, AppBarScreen screen, AppBarEdge edge, AppBarMode mode)
             : base(shellManager.AppBarManager, shellManager.ExplorerHelper, shellManager.FullScreenHelper, screen, edge, mode, 0)
@@ -55,10 +73,12 @@ namespace RetroBar
             _updater = updater;
             this.windowManager = windowManager;
             this.hotkeyManager = hotkeyManager;
+            _commandRegistry = new TaskbarCommandRegistry(this);
 
             InitializeComponent();
             DataContext = _shellManager;
             StartButton.StartMenuMonitor = startMenuMonitor;
+            InitializeCommandBar();
 
             RecalculateSize(false);
 
@@ -86,6 +106,143 @@ namespace RetroBar
 
             _startMenuMonitor.StartMenuVisibilityChanged += StartMenuMonitor_StartMenuVisibilityChanged;
             _shellManager.TasksService.WindowActivated += TasksService_WindowActivated;
+        }
+
+        private void InitializeCommandBar()
+        {
+            CommandSuggestionsListBox.ItemsSource = _filteredCommands;
+
+            UpdateCommandBarVisibility();
+            UpdateCommandSuggestionsPlacement();
+            RefreshCommandSuggestions();
+        }
+
+        private void UpdateCommandBarVisibility()
+        {
+            bool showCommandBar = Screen.Primary && Orientation == Orientation.Horizontal;
+            CommandBarBorder.Visibility = showCommandBar ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!showCommandBar)
+            {
+                CloseCommandSuggestions();
+            }
+        }
+
+        private void UpdateCommandSuggestionsPlacement()
+        {
+            CommandSuggestionsPopup.Placement = AppBarEdge == AppBarEdge.Top ? PlacementMode.Bottom : PlacementMode.Top;
+        }
+
+        private void RefreshCommandSuggestions()
+        {
+            _filteredCommands.Clear();
+
+            if (CommandBarBorder.Visibility != Visibility.Visible)
+            {
+                CloseCommandSuggestions();
+                return;
+            }
+
+            string query = CommandInputTextBox.Text?.Trim() ?? string.Empty;
+
+            IEnumerable<TaskbarCommandDefinition> commands = _commandRegistry.Commands;
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                commands = commands
+                    .Where(command => command.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(command => GetCommandMatchRank(command, query))
+                    .ThenBy(command => command.Name, StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                commands = commands.OrderBy(command => command.Name, StringComparer.OrdinalIgnoreCase);
+            }
+
+            foreach (TaskbarCommandDefinition command in commands.Take(8))
+            {
+                _filteredCommands.Add(command);
+            }
+
+            CommandSuggestionsListBox.SelectedIndex = _filteredCommands.Count > 0 ? 0 : -1;
+            CommandSuggestionsPopup.IsOpen = CommandInputTextBox.IsKeyboardFocusWithin && _filteredCommands.Count > 0;
+        }
+
+        private static int GetCommandMatchRank(TaskbarCommandDefinition command, string query)
+        {
+            if (command.Name.Equals(query, StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (command.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            return 2;
+        }
+
+        private void CloseCommandSuggestions()
+        {
+            CommandSuggestionsPopup.IsOpen = false;
+            CommandSuggestionsListBox.SelectedIndex = -1;
+        }
+
+        private TaskbarCommandDefinition FindExactCommand(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return null;
+            }
+
+            return _commandRegistry.Commands.FirstOrDefault(command =>
+                command.Name.Equals(query, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void MoveCommandSelection(int offset)
+        {
+            if (_filteredCommands.Count == 0)
+            {
+                return;
+            }
+
+            int currentIndex = CommandSuggestionsListBox.SelectedIndex;
+            if (currentIndex < 0)
+            {
+                currentIndex = 0;
+            }
+
+            int nextIndex = Math.Max(0, Math.Min(_filteredCommands.Count - 1, currentIndex + offset));
+            CommandSuggestionsListBox.SelectedIndex = nextIndex;
+            CommandSuggestionsListBox.ScrollIntoView(CommandSuggestionsListBox.SelectedItem);
+        }
+
+        private void ApplySelectedCommandText()
+        {
+            if (CommandSuggestionsListBox.SelectedItem is not TaskbarCommandDefinition command)
+            {
+                return;
+            }
+
+            CommandInputTextBox.Text = command.Name;
+            CommandInputTextBox.CaretIndex = CommandInputTextBox.Text.Length;
+        }
+
+        private bool TryExecuteCommandFromInput()
+        {
+            TaskbarCommandDefinition command = FindExactCommand(CommandInputTextBox.Text) ??
+                                              CommandSuggestionsListBox.SelectedItem as TaskbarCommandDefinition ??
+                                              _filteredCommands.FirstOrDefault();
+
+            if (command == null)
+            {
+                return false;
+            }
+
+            CloseCommandSuggestions();
+            CommandInputTextBox.Clear();
+            command.Execute();
+            return true;
         }
 
         private void TasksService_WindowActivated(object sender, ManagedShell.WindowsTasks.WindowEventArgs e)
@@ -157,6 +314,8 @@ namespace RetroBar
             {
                 PeekDuringAutoHide();
                 AppBarEdge = Settings.Instance.Edge;
+                UpdateCommandBarVisibility();
+                UpdateCommandSuggestionsPlacement();
                 UpdatePosition();
             }
             else if (e.PropertyName == nameof(Settings.Language))
@@ -240,6 +399,7 @@ namespace RetroBar
 
             SetLayoutRounding();
             SetBlur(AllowsBlur());
+            UpdateCommandSuggestionsPlacement();
             UpdateTrayPosition();
         }
 
@@ -308,6 +468,7 @@ namespace RetroBar
             base.OnAutoHideAnimationBegin(isHiding);
 
             // Prevent focus indicators and tooltips while hidden
+            CloseCommandSuggestions();
             ResetControlFocus();
 
             if (!isHiding && Opacity < 1)
@@ -352,12 +513,87 @@ namespace RetroBar
 
         private void Taskbar_Deactivated(object sender, EventArgs e)
         {
+            CloseCommandSuggestions();
+
             if (AppBarMode != AppBarMode.AutoHide)
             {
                 // Prevent focus indicators and tooltips while not the active window
                 // When auto-hide is enabled, this is performed by auto-hide events instead
                 ResetControlFocus();
             }
+        }
+
+        private void CommandInputTextBox_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            RefreshCommandSuggestions();
+        }
+
+        private void CommandInputTextBox_OnTextChanged(object sender, TextChangedEventArgs e)
+        {
+            RefreshCommandSuggestions();
+        }
+
+        private void CommandInputTextBox_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Down:
+                    MoveCommandSelection(1);
+                    e.Handled = true;
+                    break;
+                case Key.Up:
+                    MoveCommandSelection(-1);
+                    e.Handled = true;
+                    break;
+                case Key.Tab:
+                    ApplySelectedCommandText();
+                    e.Handled = true;
+                    break;
+                case Key.Enter:
+                    e.Handled = TryExecuteCommandFromInput();
+                    break;
+                case Key.Escape:
+                    CloseCommandSuggestions();
+                    CommandInputTextBox.SelectAll();
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        private void CommandSuggestionsListBox_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = TryExecuteCommandFromInput();
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CloseCommandSuggestions();
+                CommandInputTextBox.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void CommandSuggestionsListBox_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (ItemsControl.ContainerFromElement(CommandSuggestionsListBox, e.OriginalSource as DependencyObject) is ListBoxItem item &&
+                item.DataContext is TaskbarCommandDefinition command)
+            {
+                CommandSuggestionsListBox.SelectedItem = command;
+                TryExecuteCommandFromInput();
+                e.Handled = true;
+            }
+        }
+
+        private void CommandControl_OnLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!CommandInputTextBox.IsKeyboardFocusWithin && !CommandSuggestionsListBox.IsKeyboardFocusWithin)
+                {
+                    CloseCommandSuggestions();
+                }
+            });
         }
         #endregion
 
@@ -453,6 +689,7 @@ namespace RetroBar
 
         private void ResetControlFocus()
         {
+            CloseCommandSuggestions();
             FocusDummyButton.MoveFocus(new TraversalRequest(FocusNavigationDirection.Left));
         }
 
@@ -539,6 +776,11 @@ namespace RetroBar
         #region Unlocked taskbar drag hook
         private void Taskbar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (CommandBarBorder.IsMouseOver)
+            {
+                return;
+            }
+
             if (!IsLocked)
             {
                 // Start low-level mouse hook to receive current drag position
@@ -751,6 +993,12 @@ namespace RetroBar
 
         private void Taskbar_MouseMove(object sender, MouseEventArgs e)
         {
+            if (CommandBarBorder.IsMouseOver)
+            {
+                Cursor = null;
+                return;
+            }
+
             // Show resize cursor for resizable taskbars
             if (IsMouseInResizeArea() || _mouseDragResize)
             {
