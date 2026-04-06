@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -73,12 +74,13 @@ namespace RetroBar
             _updater = updater;
             this.windowManager = windowManager;
             this.hotkeyManager = hotkeyManager;
-            _commandRegistry = new TaskbarCommandRegistry(this);
+            _commandRegistry = new TaskbarCommandRegistry();
 
             InitializeComponent();
             DataContext = _shellManager;
             StartButton.StartMenuMonitor = startMenuMonitor;
             InitializeCommandBar();
+            _commandRegistry.CommandsChanged += CommandRegistry_CommandsChanged;
 
             RecalculateSize(false);
 
@@ -115,6 +117,11 @@ namespace RetroBar
             UpdateCommandBarVisibility();
             UpdateCommandSuggestionsPlacement();
             RefreshCommandSuggestions();
+        }
+
+        private void CommandRegistry_CommandsChanged(object sender, EventArgs e)
+        {
+            Dispatcher.BeginInvoke(RefreshCommandSuggestions);
         }
 
         private void UpdateCommandBarVisibility()
@@ -433,6 +440,8 @@ namespace RetroBar
                 Settings.Instance.PropertyChanged -= Settings_PropertyChanged;
                 _startMenuMonitor.StartMenuVisibilityChanged -= StartMenuMonitor_StartMenuVisibilityChanged;
                 _shellManager.TasksService.WindowActivated -= TasksService_WindowActivated;
+                _commandRegistry.CommandsChanged -= CommandRegistry_CommandsChanged;
+                _commandRegistry.Dispose();
             }
         }
 
@@ -531,6 +540,11 @@ namespace RetroBar
         private void CommandInputTextBox_OnTextChanged(object sender, TextChangedEventArgs e)
         {
             RefreshCommandSuggestions();
+        }
+
+        private void CommandInputTextBox_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            Dispatcher.BeginInvoke(RefreshCommandSuggestions);
         }
 
         private void CommandInputTextBox_OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -637,6 +651,34 @@ namespace RetroBar
         private void PropertiesMenuItem_OnClick(object sender, RoutedEventArgs e)
         {
             PropertiesWindow.Open(_shellManager.NotificationArea, _dictionaryManager, Screen, DpiScale, Orientation == Orientation.Horizontal ? DesiredHeight : DesiredWidth);
+        }
+
+        private void EditCommandsMenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            string commandsFilePath = Path.Combine(AppContext.BaseDirectory, "Settings\\commands.txt");
+
+            try
+            {
+                string commandsDirectory = Path.GetDirectoryName(commandsFilePath) ?? AppContext.BaseDirectory;
+                Directory.CreateDirectory(commandsDirectory);
+
+                if (!File.Exists(commandsFilePath))
+                {
+                    File.WriteAllText(commandsFilePath, string.Empty);
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = commandsFilePath,
+                    WorkingDirectory = commandsDirectory,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                ShellLogger.Error($"Taskbar: Failed to open commands file '{commandsFilePath}': {ex.Message}", ex);
+                MessageBox.Show($"Unable to open commands file.\n{ex.Message}", "RetroBar", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ExitMenuItem_OnClick(object sender, RoutedEventArgs e)

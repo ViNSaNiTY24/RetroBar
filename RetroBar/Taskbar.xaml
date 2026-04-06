@@ -30,6 +30,7 @@
             <MenuItem x:Shared="false" x:Key="CustomizeNotificationsMenuItem" Header="{DynamicResource customize_notifications_menu}" Click="CustomizeNotificationsMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="TaskManagerMenuItem" Style="{DynamicResource TaskManMenuItem}" Click="TaskManagerMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="LockTaskbarMenuItem" Header="{DynamicResource lock_taskbar_menu}" IsCheckable="True" IsChecked="{Binding Source={x:Static utilities:Settings.Instance}, Path=LockTaskbar, UpdateSourceTrigger=PropertyChanged}" />
+            <MenuItem x:Shared="false" x:Key="EditCommandsMenuItem" Header="Edit Commands" Click="EditCommandsMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="PropertiesMenuItem" Header="{DynamicResource tray_properties}" Click="PropertiesMenuItem_OnClick" />
             <MenuItem x:Shared="false" x:Key="ExitMenuItem" Header="{DynamicResource exit_retrobar}" Click="ExitMenuItem_OnClick" Visibility="{Binding Source={x:Static utilities:Settings.Instance}, Path=ShowExitMenuItem, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource boolToVisibilityConverter}}" />
         </ResourceDictionary>
@@ -96,6 +97,7 @@
                         <StaticResourceExtension ResourceKey="TaskManagerMenuItem" />
                         <Separator />
                         <StaticResourceExtension ResourceKey="LockTaskbarMenuItem" />
+                        <StaticResourceExtension ResourceKey="EditCommandsMenuItem" />
                         <StaticResourceExtension ResourceKey="PropertiesMenuItem" />
                         <StaticResourceExtension ResourceKey="ExitMenuItem" />
                     </ContextMenu>
@@ -130,6 +132,7 @@
                              Style="{DynamicResource TaskbarCommandTextBox}"
                              TextChanged="CommandInputTextBox_OnTextChanged"
                              PreviewKeyDown="CommandInputTextBox_OnPreviewKeyDown"
+                             PreviewMouseLeftButtonUp="CommandInputTextBox_OnPreviewMouseLeftButtonUp"
                              GotKeyboardFocus="CommandInputTextBox_OnGotKeyboardFocus"
                              LostKeyboardFocus="CommandControl_OnLostKeyboardFocus" />
                     <Popup x:Name="CommandSuggestionsPopup"
@@ -176,6 +179,7 @@
                     FontWeight="Bold"
                     Visibility="Collapsed" />
             <StaticResourceExtension ResourceKey="LockTaskbarMenuItem" />
+            <StaticResourceExtension ResourceKey="EditCommandsMenuItem" />
             <StaticResourceExtension ResourceKey="PropertiesMenuItem" />
             <StaticResourceExtension ResourceKey="ExitMenuItem" />
         </ContextMenu>

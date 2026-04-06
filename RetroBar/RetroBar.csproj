@@ -31,6 +31,9 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <SubType>Designer</SubType>
         </None>
+        <None Include="Settings\commands.txt">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
