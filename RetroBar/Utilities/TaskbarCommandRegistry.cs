@@ -24,6 +24,7 @@ namespace RetroBar.Utilities
                 Create("Aria2c Download", Aria2cDownload),
                 Create("HardDriveFileLister", HardDriveFileLister),
                 Create("Page File", ShowPageFileSize),
+                Create("Sound Settings", SoundSettings),
                 Create("SportsRssQbt", SportsRssQbt),
                 Create("Timer", Timer),
                 Create("Uninstall Tool", UninstallTool),
@@ -77,6 +78,14 @@ namespace RetroBar.Utilities
             var P = new Process();
             P.StartInfo.FileName = @"E:\Misc. Stuff\AutoHotkey\HardDriveFileLister.ahk";
             P.StartInfo.WorkingDirectory = @"E:\Misc. Stuff\AutoHotkey";
+            P.StartInfo.UseShellExecute = true;
+            P.Start();
+        }
+
+        private static void SoundSettings()
+        {
+            var P = new Process();
+            P.StartInfo.FileName = @"mmsys.cpl";
             P.StartInfo.UseShellExecute = true;
             P.Start();
         }
