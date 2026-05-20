@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -9,7 +8,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Threading;
 using ManagedShell.Common.Helpers;
 using ManagedShell.WindowsTray;
@@ -31,13 +29,14 @@ namespace RetroBar.Controls
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         private bool _isLoaded;
-        private CollectionViewSource allNotifyIconsSource;
-        private CollectionViewSource pinnedNotifyIconsSource;
-        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> promotedIcons = [];
+        private bool _refreshQueued;
+        private bool _refreshAllIconsQueued;
+        private bool _refreshPinnedIconsQueued;
+        private readonly List<ManagedShell.WindowsTray.NotifyIcon> promotedIcons = [];
 
         // Sorted collections
-        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedAllIcons = [];
-        private ObservableCollection<ManagedShell.WindowsTray.NotifyIcon> sortedPinnedIcons = [];
+        private List<ManagedShell.WindowsTray.NotifyIcon> sortedAllIcons = [];
+        private List<ManagedShell.WindowsTray.NotifyIcon> sortedPinnedIcons = [];
 
         public static DependencyProperty NotificationAreaProperty = DependencyProperty.Register(nameof(NotificationArea), typeof(NotificationArea), typeof(NotifyIconList), new PropertyMetadata(NotificationAreaChangedCallback));
 
@@ -86,7 +85,7 @@ namespace RetroBar.Controls
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RetroBar] Could not monitor process {processId}: {ex.Message}");
+                Debug.WriteLine($"[RetroBar] Could not monitor process {processId}: {ex.Message}");
                 // If we get an Access Denied exception (e.g. for an elevated app), the process is running 
                 // but we can't hook it. Only clean up if the window itself is actually dead.
                 if (!IsWindow(icon.HWnd))
@@ -155,13 +154,21 @@ namespace RetroBar.Controls
             var result = new List<ManagedShell.WindowsTray.NotifyIcon>();
             if (source == null) return result;
 
-            foreach (object item in source)
+            try
             {
-                if (item is ManagedShell.WindowsTray.NotifyIcon icon)
+                foreach (object item in source)
                 {
-                    result.Add(icon);
+                    if (item is ManagedShell.WindowsTray.NotifyIcon icon)
+                    {
+                        result.Add(icon);
+                    }
                 }
             }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"[RetroBar] ExtractIcons skipped unstable collection: {ex.Message}");
+            }
+
             return result;
         }
 
@@ -199,17 +206,11 @@ namespace RetroBar.Controls
                     .ToList();
 
                 var all = filteredUnpinned.Concat(filteredPinned).ToList();
-                var sorted = SortIconList(all);
-
-                sortedAllIcons.Clear();
-                foreach (var icon in sorted)
-                {
-                    sortedAllIcons.Add(icon);
-                }
+                sortedAllIcons = SortIconList(all);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RetroBar] RebuildSortedAllIcons error: {ex.Message}");
+                Debug.WriteLine($"[RetroBar] RebuildSortedAllIcons error: {ex.Message}");
             }
         }
 
@@ -235,17 +236,11 @@ namespace RetroBar.Controls
                     .ToList();
 
                 var all = filteredPromoted.Concat(filteredPinned).ToList();
-                var sorted = SortIconList(all);
-
-                sortedPinnedIcons.Clear();
-                foreach (var icon in sorted)
-                {
-                    sortedPinnedIcons.Add(icon);
-                }
+                sortedPinnedIcons = SortIconList(all);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[RetroBar] RebuildSortedPinnedIcons error: {ex.Message}");
+                Debug.WriteLine($"[RetroBar] RebuildSortedPinnedIcons error: {ex.Message}");
             }
         }
 
@@ -253,6 +248,65 @@ namespace RetroBar.Controls
         {
             RebuildSortedAllIcons();
             RebuildSortedPinnedIcons();
+        }
+
+        private void QueueSortedRefresh(bool refreshAllIcons = true, bool refreshPinnedIcons = true)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => QueueSortedRefresh(refreshAllIcons, refreshPinnedIcons)), DispatcherPriority.Background);
+                return;
+            }
+
+            _refreshAllIconsQueued |= refreshAllIcons;
+            _refreshPinnedIconsQueued |= refreshPinnedIcons;
+
+            if (_refreshQueued)
+            {
+                return;
+            }
+
+            _refreshQueued = true;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _refreshQueued = false;
+
+                bool refreshAll = _refreshAllIconsQueued;
+                bool refreshPinned = _refreshPinnedIconsQueued;
+                _refreshAllIconsQueued = false;
+                _refreshPinnedIconsQueued = false;
+
+                if (!_isLoaded || NotificationArea == null)
+                {
+                    return;
+                }
+
+                if (refreshAll)
+                {
+                    RebuildSortedAllIcons();
+                }
+
+                if (refreshPinned)
+                {
+                    RebuildSortedPinnedIcons();
+                }
+
+                ApplyCurrentItemsSource();
+                SetToggleVisibility();
+            }), DispatcherPriority.Background);
+        }
+
+        private void ApplyCurrentItemsSource()
+        {
+            if (Settings.Instance.CollapseNotifyIcons && NotifyIconToggleButton.IsChecked != true)
+            {
+                NotifyIcons.ItemsSource = sortedPinnedIcons;
+            }
+            else
+            {
+                NotifyIcons.ItemsSource = sortedAllIcons;
+            }
         }
 
         #endregion
@@ -297,27 +351,10 @@ namespace RetroBar.Controls
         {
             if (!_isLoaded && NotificationArea != null)
             {
-                // Keep original setup for filter functionality
-                CompositeCollection allNotifyIcons =
-                [
-                    new CollectionContainer { Collection = NotificationArea.UnpinnedIcons },
-                    new CollectionContainer { Collection = NotificationArea.PinnedIcons },
-                ];
-                allNotifyIconsSource = new CollectionViewSource { Source = allNotifyIcons };
-                NotificationArea.UnpinnedIcons.Filter = UnpinnedNotifyIcons_Filter;
-
-                CompositeCollection pinnedNotifyIcons =
-                [
-                    new CollectionContainer { Collection = promotedIcons },
-                    new CollectionContainer { Collection = NotificationArea.PinnedIcons },
-                ];
-                pinnedNotifyIconsSource = new CollectionViewSource { Source = pinnedNotifyIcons };
-
                 // Subscribe to changes
                 NotificationArea.UnpinnedIcons.CollectionChanged += UnpinnedIcons_CollectionChanged;
                 NotificationArea.PinnedIcons.CollectionChanged += PinnedIcons_CollectionChanged;
                 NotificationArea.NotificationBalloonShown += NotificationArea_NotificationBalloonShown;
-                promotedIcons.CollectionChanged += PromotedIcons_CollectionChanged;
 
                 Settings.Instance.PropertyChanged += Settings_PropertyChanged;
 
@@ -358,18 +395,7 @@ namespace RetroBar.Controls
                 }
             }
 
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                RebuildAllSortedCollections();
-            }), DispatcherPriority.Background);
-        }
-
-        private void PromotedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                RebuildSortedPinnedIcons();
-            }), DispatcherPriority.Background);
+            QueueSortedRefresh();
         }
 
         private static void NotificationAreaChangedCallback(DependencyObject sender, DependencyPropertyChangedEventArgs e)
@@ -407,7 +433,7 @@ namespace RetroBar.Controls
             string title = icon.Title;
 
             // Add your exclusion rules here
-            if (title.Contains("apps are using your microphone"))
+            if (title.Contains("using your microphone"))
             {
                 return true;
             }
@@ -423,6 +449,12 @@ namespace RetroBar.Controls
 
         private void NotificationArea_NotificationBalloonShown(object sender, NotificationBalloonEventArgs e)
         {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => NotificationArea_NotificationBalloonShown(sender, e)), DispatcherPriority.Background);
+                return;
+            }
+
             if (NotificationArea == null)
             {
                 return;
@@ -447,6 +479,7 @@ namespace RetroBar.Controls
             }
 
             promotedIcons.Add(notifyIcon);
+            QueueSortedRefresh(false, true);
 
             DispatcherTimer unpromoteTimer = new DispatcherTimer
             {
@@ -457,6 +490,7 @@ namespace RetroBar.Controls
                 if (promotedIcons.Contains(notifyIcon))
                 {
                     promotedIcons.Remove(notifyIcon);
+                    QueueSortedRefresh(false, true);
                 }
                 unpromoteTimer.Stop();
             };
@@ -484,14 +518,15 @@ namespace RetroBar.Controls
                 NotificationArea.NotificationBalloonShown -= NotificationArea_NotificationBalloonShown;
             }
 
-            promotedIcons.CollectionChanged -= PromotedIcons_CollectionChanged;
-
             _isLoaded = false;
         }
 
         private void UnpinnedIcons_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            SetToggleVisibility();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SetToggleVisibility();
+            }), DispatcherPriority.Background);
 
             // Monitor newly added icons for ghost cleanup
             if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
@@ -502,10 +537,7 @@ namespace RetroBar.Controls
                 }
             }
 
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                RebuildAllSortedCollections();
-            }), DispatcherPriority.Background);
+            QueueSortedRefresh();
         }
 
         private void NotifyIconToggleButton_OnClick(object sender, RoutedEventArgs e)
@@ -526,7 +558,7 @@ namespace RetroBar.Controls
         {
             if (!Settings.Instance.CollapseNotifyIcons) return;
 
-            if (NotificationArea.UnpinnedIcons.IsEmpty)
+            if (!ExtractIcons(NotificationArea.UnpinnedIcons).Any(UnpinnedNotifyIcons_Filter))
             {
                 NotifyIconToggleButton.Visibility = Visibility.Collapsed;
 
